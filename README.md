@@ -2,8 +2,11 @@
 
 **GitHub Repository URL:**
 
-| Team Member Name | Email Address       | GitHub Handle       |
-|------------------|---------------------|---------------------|
-| [Name 1]         | [Email 1]           | [Handle 1]          |
+| Team Member Name | Email Address                | GitHub Handle       |
+|------------------|------------------         ---|---------------------|
+| [Eric Yao]       | [yaoe@engineering.upenn.edu] | [eric-yaoza]        |
 
 
+
+
+(I1)
