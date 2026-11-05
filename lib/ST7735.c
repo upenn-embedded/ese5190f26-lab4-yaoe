@@ -1,3 +1,8 @@
+
+#ifndef F_CPU
+#define F_CPU 16000000UL
+#endif
+
 /**************************************************************************//**
 * @file        ST7735.c
 * @ingroup 	   ST7735
@@ -222,7 +227,7 @@ void LCD_setAddr(uint8_t x0, uint8_t y0, uint8_t x1, uint8_t y1)
 	{
 		ST7735_CASET, 4, 0x00, x0, 0x00, x1, 0,		// Column
 		ST7735_RASET, 4, 0x00, y0, 0x00, y1, 0,		// Page
-		ST7735_RAMWR, 0, 5				// Into RAM
+		ST7735_RAMWR, 0, 0				// Into RAM
 	};
 	sendCommands(ST7735_cmds, 3);
 }
