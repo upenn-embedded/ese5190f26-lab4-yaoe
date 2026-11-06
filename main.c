@@ -13,8 +13,8 @@
 #define PADDLE_STEP 2 //adjust speed of player
 #define MAX_PADDLE_Y (LCD_HEIGHT - PADDLE_HEIGHT)
 #define BALL_SIZE 6
-#define POINTS_TO_WIN 5
-#define ROUNDS_TO_WIN 2
+#define POINTS_TO_WIN 1
+#define ROUNDS_TO_WIN 1
 
 // Joystick dead zone
 #define JOY_LOW 420
@@ -72,9 +72,28 @@ void LED_init(void)
 //turn LED on for time that can be changed
 void flashLED(uint8_t pin)
 {
-    PORTD |= (1 << pin);
-    _delay_ms(200);
-    PORTD &= ~(1 << pin);
+    for (uint8_t i = 0; i < 2; i++) {
+        PORTD |= (1 << pin);
+        _delay_ms(100);
+        PORTD &= ~(1 << pin);
+        _delay_ms(100);
+    }
+}
+
+// functionality for E level 1
+void winLEDAnimation(void)
+{
+    for (uint8_t i = 0; i < 3; i++) {
+        PORTD |= (1 << PLAYER_LED);
+        PORTD &= ~(1 << CPU_LED);
+        _delay_ms(150);
+
+        PORTD &= ~(1 << PLAYER_LED);
+        PORTD |= (1 << CPU_LED);
+        _delay_ms(150);
+    }
+
+    PORTD &= ~((1 << PLAYER_LED) | (1 << CPU_LED));
 }
 
 void buzzerInit(void)
@@ -93,6 +112,59 @@ void playSound(uint16_t duration_ms)
 
     PORTD &= ~(1 << BUZZER_PIN);
 }
+
+// Fulfills part E level 3, adds random LED flashing, sounds, and flashes screen red
+//Has to rewrite everything after done flashing though
+
+void randomDistraction(uint8_t playerY, uint8_t computerY,
+                       int16_t ballX, int16_t ballY,
+                       uint8_t playerScore, uint8_t computerScore)
+{
+    if (rand() % 120 == 0) {
+
+        // Flash both LEDs and sound buzzer
+        for (uint8_t i = 0; i < 2; i++) {
+            PORTD |= (1 << PLAYER_LED) | (1 << CPU_LED);
+            playSound(70);
+            PORTD &= ~((1 << PLAYER_LED) | (1 << CPU_LED));
+            _delay_ms(80);
+        }
+
+        // Flash entire screen red
+        LCD_setScreen(RED);
+        _delay_ms(70);
+
+        // Restore black background
+        LCD_setScreen(BLACK);
+
+        // Restore scoreboard
+        LCD_drawString(15, 3, "PLAYER 0       CPU 0", WHITE, BLACK);
+        LCD_drawChar(57, 3, '0' + playerScore, WHITE, BLACK);
+        LCD_drawChar(129, 3, '0' + computerScore, WHITE, BLACK);
+        LCD_drawLine(0, 17, 159, 17, CYAN);
+
+        // Restore dashed center line
+        for (uint8_t y = 24; y < 120; y += 14) {
+            LCD_drawBlock(79, y, 80, y + 5, BLUE);
+        }
+
+        // Restore player paddle
+        LCD_drawBlock(5, playerY, 10,
+                      playerY + PADDLE_HEIGHT - 1, GREEN);
+
+        // Restore computer paddle
+        LCD_drawBlock(149, computerY, 154,
+                      computerY + PADDLE_HEIGHT - 1, YELLOW);
+
+        // Restore ball
+        LCD_drawBlock(ballX, ballY,
+                      ballX + BALL_SIZE - 1,
+                      ballY + BALL_SIZE - 1, WHITE);
+    }
+}
+
+
+
 
 void motorInit(void)
 {
@@ -182,6 +254,40 @@ int main(void)
     // Initialize random ball movement
     srand(ADC_read());
     resetBall(&ballX, &ballY, &ballVX, &ballVY);
+    
+    // Select computer difficulty
+    uint8_t cpuSpeed = 2;
+
+    LCD_setScreen(BLACK);
+    LCD_drawString(10, 30, "SELECT DIFFICULTY", WHITE, BLACK);
+    LCD_drawString(10, 50, "UP=HARD DOWN=EASY", WHITE, BLACK);
+    LCD_drawString(10, 70, "WAIT 3S=NORMAL", WHITE, BLACK);
+
+    
+    // difficulty selector 
+    for (uint8_t i = 0; i < 60; i++) {
+        uint16_t choice = ADC_read();
+
+        if (choice > JOY_HIGH) {
+            cpuSpeed = 1;
+            break;
+        } else if (choice < JOY_LOW) {
+            cpuSpeed = 5;
+            break;
+        }
+
+        _delay_ms(50);
+    }
+
+    if (cpuSpeed == 1) {
+        LCD_drawString(10, 95, "HARD SELECTED", GREEN, BLACK);
+    } else if (cpuSpeed == 5) {
+        LCD_drawString(10, 95, "EASY SELECTED", GREEN, BLACK);
+    } else {
+        LCD_drawString(10, 95, "NORMAL SELECTED", GREEN, BLACK);
+    }
+
+    _delay_ms(800);
 
     // Clear screen
     LCD_setScreen(BLACK);
@@ -241,7 +347,7 @@ int main(void)
         // Computer follows the ball, can change tracking with cpuCounter
         cpuCounter++;
 
-        if (cpuCounter >= 2) {
+        if (cpuCounter >= cpuSpeed) {
             cpuCounter = 0;
 
             int16_t ballCenter = ballY + BALL_SIZE / 2;
@@ -383,6 +489,8 @@ int main(void)
                         
                         _delay_ms(2000);
                     }
+                    
+                    winLEDAnimation();
 
                     _delay_ms(2000);
 
@@ -431,6 +539,11 @@ int main(void)
         LCD_drawBlock(ballX, ballY,
                       ballX + BALL_SIZE - 1,
                       ballY + BALL_SIZE - 1, WHITE);
+        
+        // Random distractions during gameplay
+        randomDistraction(playerY, computerY, ballX, ballY,
+                playerScore, computerScore);
+
 
         // Delay between updates
         _delay_ms(30);
